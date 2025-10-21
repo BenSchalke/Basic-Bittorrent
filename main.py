@@ -10,6 +10,7 @@ import sys
 # - decode_bencode(b"10:hello12345") -> [b"hello12345",b""]
 # will return a list where index 0 is decoded value and 1 is rest of the input
 def decode_bencode(bencoded_value):
+
     #decodes string of length defined by start digits
     if chr(bencoded_value[0]).isdigit():
         first_colon_index = bencoded_value.find(b":")
@@ -18,10 +19,12 @@ def decode_bencode(bencoded_value):
             raise ValueError("Invalid encoded value")
         string_start = first_colon_index + 1
         return bencoded_value[string_start:string_start+string_length], bencoded_value[string_start+string_length:]
+    
     #decodes for an integer
     elif bencoded_value.startswith(b"i"):
         end = bencoded_value.index(b"e")
         return int(bencoded_value[1:end]), bencoded_value[end+1:]
+    
     #decodes a list by calling itself
     elif bencoded_value.startswith(b"l"):
         bencoded_value = bencoded_value[1:]
@@ -30,6 +33,24 @@ def decode_bencode(bencoded_value):
             item, bencoded_value = decode_bencode(bencoded_value)
             outlist.append(item)
         return outlist, bencoded_value[1:]
+    
+    #decodes dictionary
+    elif bencoded_value.startswith(b"d"):
+        result = {}
+        rest = bencoded_value[1:]
+        while chr(rest[0]) != "e":
+            try:
+                key, rest = decode_bencode(rest)
+                value, rest = decode_bencode(rest)
+            except ValueError as ex:
+                raise ValueError(
+                    "Invalid encoded value; dictionary could not be parsed"
+                ) from ex
+            else:
+                result[key.decode()] = value
+
+        #returns a dictionary sorted lexicographically by key
+        return dict(sorted(result.items())), rest[1:]
 
     else:
         raise NotImplementedError("Not supported data type")
@@ -54,8 +75,8 @@ def main():
 
             raise TypeError(f"Type not serializable: {type(data)}")
 
-        # Uncomment this block to pass the first stage
-        print(json.dumps(decode_bencode(bencoded_value), default=bytes_to_str))
+        final = decode_bencode(bencoded_value)
+        print(json.dumps(final, default=bytes_to_str))
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
