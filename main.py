@@ -55,6 +55,15 @@ def decode_bencode(bencoded_value):
     else:
         raise NotImplementedError("Not supported data type")
 
+# json.dumps() can't handle bytes, but bencoded "strings" need to be
+# bytestrings since they might contain non utf-8 characters.
+#
+# Let's convert them to strings for printing to the console.
+def bytes_to_str(data):
+            if isinstance(data, bytes):
+                return data.decode()
+
+            raise TypeError(f"Type not serializable: {type(data)}")
 
 def main():
     command = sys.argv[1]
@@ -65,18 +74,22 @@ def main():
     if command == "decode":
         bencoded_value = sys.argv[2].encode()
 
-        # json.dumps() can't handle bytes, but bencoded "strings" need to be
-        # bytestrings since they might contain non utf-8 characters.
-        #
-        # Let's convert them to strings for printing to the console.
-        def bytes_to_str(data):
-            if isinstance(data, bytes):
-                return data.decode()
-
-            raise TypeError(f"Type not serializable: {type(data)}")
-
-        final = decode_bencode(bencoded_value)
+        final = decode_bencode(bencoded_value)[0]
         print(json.dumps(final, default=bytes_to_str))
+    
+    elif command == "info":
+        file_name = sys.argv[2]
+
+        with open(file_name,"rb") as file:
+            contents = decode_bencode(file.read())[0]
+
+        URL = contents["announce"]
+        length = contents["info"]["files"][0]["length"] #all sorts of nested dictionary and list fuckery
+
+        print("URL:",end="\t")
+        print(json.dumps(URL, default=bytes_to_str))
+        print("Length:",end="\t")
+        print(json.dumps(length, default=bytes_to_str))
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
