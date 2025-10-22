@@ -84,7 +84,10 @@ def main():
             contents = decode_bencode(file.read())[0]
 
         URL = contents["announce"]
-        length = contents["info"]["files"][0]["length"] #all sorts of nested dictionary and list fuckery
+        try:
+            length = contents["info"]["files"][0]["length"] #all sorts of nested dictionary and list fuckery
+        except KeyError:
+            length = contents["info"]["length"]
 
         print("URL:",end="\t")
         print(json.dumps(URL, default=bytes_to_str))
