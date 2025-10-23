@@ -1,5 +1,6 @@
 import json
 import sys
+import hashlib
 
 # import bencodepy - available if you need it!
 # import requests - available if you need it!
@@ -55,6 +56,41 @@ def decode_bencode(bencoded_value):
     else:
         raise NotImplementedError("Not supported data type")
 
+def bencode_any(i):
+    if isinstance(i,int):
+        return bencode_int(i)
+    elif isinstance(i,str):
+        return bencode_str(i)
+    elif isinstance(i,dict):
+        return bencode_dict(i)
+    elif isinstance(i,list):
+        return bencode_list(i)
+
+def bencode_str(value):
+    try:
+        value = value.decode()
+    except AttributeError:
+        pass
+    l = len(value)
+    return (str(l)+":"+value).encode()
+
+def bencode_int(value):
+    return ("i"+str(value)+"e").encode()
+
+def bencode_list(value):
+    result = b"l"
+    for i in value:
+        result += bencode_any(i)
+    return result+b"e"
+
+def bencode_dict(value):
+    value = dict(sorted(value.items()))
+    result = b"d"
+    for key in value:
+        result += bencode_any(key)
+        result += bencode_any(value[key])
+    return result+b"e"
+
 # json.dumps() can't handle bytes, but bencoded "strings" need to be
 # bytestrings since they might contain non utf-8 characters.
 #
@@ -80,10 +116,19 @@ def main():
     elif command == "info":
         file_name = sys.argv[2]
 
-        with open(file_name,"rb") as file:
-            contents = decode_bencode(file.read())[0]
+        try:
+            with open(file_name,"rb") as file:
+                contents = decode_bencode(file.read())[0]
+        except FileNotFoundError:
+            raise Exception("File not found")
 
-        URL = contents["announce"]
+
+        try:
+            URL = contents["announce"]
+        except KeyError:
+            URL = b"No found URL"
+        
+        #try for multi or single file
         try:
             length = contents["info"]["files"][0]["length"] #all sorts of nested dictionary and list fuckery
         except KeyError:
