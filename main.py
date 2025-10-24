@@ -2,9 +2,6 @@ import json
 import sys
 import hashlib
 
-# import bencodepy - available if you need it!
-# import requests - available if you need it!
-
 # Examples:
 #
 # - decode_bencode(b"5:hello") -> [b"hello",b""]
@@ -57,22 +54,20 @@ def decode_bencode(bencoded_value):
         raise NotImplementedError("Not supported data type")
 
 def bencode_any(i):
+    if isinstance(i,bytes):
+        return bencode_str(i)
     if isinstance(i,int):
         return bencode_int(i)
     elif isinstance(i,str):
-        return bencode_str(i)
+        return bencode_str(bytes(i,"utf-8"))
     elif isinstance(i,dict):
         return bencode_dict(i)
     elif isinstance(i,list):
         return bencode_list(i)
 
 def bencode_str(value):
-    try:
-        value = value.decode()
-    except AttributeError:
-        pass
     l = len(value)
-    return (str(l)+":"+value).encode()
+    return bytes(str(l), "utf-8") + b":" + value
 
 def bencode_int(value):
     return ("i"+str(value)+"e").encode()
@@ -122,7 +117,6 @@ def main():
         except FileNotFoundError:
             raise Exception("File not found")
 
-
         try:
             URL = contents["announce"]
         except KeyError:
@@ -130,14 +124,18 @@ def main():
         
         #try for multi or single file
         try:
-            length = contents["info"]["files"][0]["length"] #all sorts of nested dictionary and list fuckery
+            length = contents["info"]["files"][0]["length"]
         except KeyError:
             length = contents["info"]["length"]
 
-        print("URL:",end="\t")
+        info_hash = hashlib.sha1(bencode_dict(contents["info"])).hexdigest()
+
+        print("URL:",end="\t\t")
         print(json.dumps(URL, default=bytes_to_str))
-        print("Length:",end="\t")
+        print("Length:",end="\t\t")
         print(json.dumps(length, default=bytes_to_str))
+        print("Info Hash:",end="\t")
+        print(json.dumps(info_hash, default=bytes_to_str))
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
