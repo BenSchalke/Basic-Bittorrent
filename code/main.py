@@ -128,14 +128,38 @@ def main():
         except KeyError:
             length = contents["info"]["length"]
 
-        info_hash = hashlib.sha1(bencode_dict(contents["info"])).hexdigest()
 
-        print("URL:",end="\t\t")
-        print(json.dumps(URL, default=bytes_to_str))
-        print("Length:",end="\t\t")
-        print(json.dumps(length, default=bytes_to_str))
-        print("Info Hash:",end="\t")
-        print(json.dumps(info_hash, default=bytes_to_str))
+        info_hash = hashlib.sha1(bencode_dict(contents["info"])).hexdigest()
+        piece_length = contents["info"]["piece length"]
+        concat_pieces = contents["info"]["pieces"].hex()
+        pieces = []
+
+        #splits the concatenated pieces into pieces of length 20 bytes(40 characters as string)
+        for i in range(39,len(concat_pieces),39):
+            print(i)
+            pieces.append(concat_pieces[i-39:i+1])
+
+        #Dictionary of information displayed when info command is run
+        info_dict = {
+            "URL":          URL,
+            "Length":       length,
+            "Info Hash":    info_hash,
+            "Piece Length": piece_length,
+            "Pieces":       pieces
+        }
+
+        print(json.dumps(info_dict, default=bytes_to_str, indent=2))
+
+    elif command == "contents":
+        file_name = sys.argv[2]
+
+        try:
+            with open(file_name,"rb") as file:
+                contents = decode_bencode(file.read())[0]
+        except FileNotFoundError:
+            raise Exception("File not found")
+        
+        print(contents)
     else:
         raise NotImplementedError(f"Unknown command {command}")
 
